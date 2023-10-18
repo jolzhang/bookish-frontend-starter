@@ -20,7 +20,7 @@ async function login() {
     <fieldset>
       <div class="pure-control-group">
         <label for="aligned-name">Username</label>
-        <input v-model.trim="username" type="text" id="aligned-name" placeholder="Username" required />
+        <input v-model.trim="username" type="text" id="aligned-name" placeholder="Hello" required />
       </div>
       <div class="pure-control-group">
         <label for="aligned-password">Password</label>
