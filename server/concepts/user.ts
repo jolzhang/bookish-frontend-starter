@@ -5,14 +5,15 @@ import { BadValuesError, NotAllowedError, NotFoundError } from "./errors";
 export interface UserDoc extends BaseDoc {
   username: string;
   password: string;
+  email: string;
 }
 
 export default class UserConcept {
   public readonly users = new DocCollection<UserDoc>("users");
 
-  async create(username: string, password: string) {
-    await this.canCreate(username, password);
-    const _id = await this.users.createOne({ username, password });
+  async create(username: string, password: string, email: string) {
+    await this.canCreate(username, password, email);
+    const _id = await this.users.createOne({ username, password, email });
     return { msg: "User created successfully!", user: await this.users.readOne({ _id }) };
   }
 
@@ -81,9 +82,9 @@ export default class UserConcept {
     }
   }
 
-  private async canCreate(username: string, password: string) {
-    if (!username || !password) {
-      throw new BadValuesError("Username and password must be non-empty!");
+  private async canCreate(username: string, password: string, email: string) {
+    if (!username || !password || !email) {
+      throw new BadValuesError("Username, password and email must be non-empty!");
     }
     await this.isUsernameUnique(username);
   }
