@@ -19,7 +19,7 @@ export default class UserConcept {
 
   private sanitizeUser(user: UserDoc) {
     // eslint-disable-next-line
-    const { password, ...rest } = user; // remove password
+    const { password, email, ...rest } = user; // remove password
     return rest;
   }
 
@@ -32,11 +32,14 @@ export default class UserConcept {
   }
 
   async getUserByUsername(username: string) {
-    const user = await this.users.readOne({ username });
-    if (user === null) {
-      throw new NotFoundError(`User not found!`);
+    if (username) {
+      const user = await this.users.readOne({ username });
+      if (user === null) {
+        throw new NotFoundError(`User not found!`);
+      }
+      return this.sanitizeUser(user);
     }
-    return this.sanitizeUser(user);
+    throw new NotAllowedError("Username not entered!");
   }
 
   async idsToUsernames(ids: ObjectId[]) {

@@ -4,6 +4,7 @@ import FriendConcept from "./concepts/friend";
 import GroupConcept from "./concepts/group";
 import ListConcept from "./concepts/list";
 import PostConcept from "./concepts/post";
+import ProfileConcept from "./concepts/profile";
 import UserConcept from "./concepts/user";
 import WebSessionConcept from "./concepts/websession";
 
@@ -16,3 +17,4 @@ export const Comment = new CommentConcept();
 export const Group = new GroupConcept();
 export const Book = new BookConcept();
 export const List = new ListConcept();
+export const Profile = new ProfileConcept();

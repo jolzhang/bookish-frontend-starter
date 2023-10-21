@@ -2,11 +2,12 @@ import { ObjectId } from "mongodb";
 
 import { Router, getExpressRouter } from "./framework/router";
 
-import { Book, Comment, Friend, Group, List, Post, User, WebSession } from "./app";
+import { Book, Comment, Friend, Group, List, Post, Profile, User, WebSession } from "./app";
 import { NotAllowedError } from "./concepts/errors";
 import { PostDoc, PostOptions } from "./concepts/post";
 import { UserDoc } from "./concepts/user";
 import { WebSessionDoc } from "./concepts/websession";
+
 import Responses from "./responses";
 
 class Routes {
@@ -16,10 +17,10 @@ class Routes {
     return await User.getUserById(user);
   }
 
-  @Router.get("/users")
-  async getUsers() {
-    return await User.getUsers();
-  }
+  // @Router.get("/users")
+  // async getUsers() {
+  //   return await User.getUsers();
+  // }
 
   @Router.get("/users/:username")
   async getUser(username: string) {
@@ -42,14 +43,14 @@ class Routes {
   async deleteUser(session: WebSessionDoc) {
     const user = WebSession.getUser(session);
     WebSession.end(session);
-    // Remove User from All Groups 
+    // Remove User from All Groups
     const groups = await Group.getAllUserGroups(user);
-    for (let i = 0; i < groups.length; i ++) {
+    for (let i = 0; i < groups.length; i++) {
       await Group.removeSelf(user, groups[i].groupname);
     }
     // Delete all lists created by User
     const lists = await List.getUserLists(user);
-    for (let i = 0; i < lists.length; i ++) {
+    for (let i = 0; i < lists.length; i++) {
       await List.deleteList(lists[i].listname, user);
     }
     return await User.delete(user);
@@ -111,6 +112,7 @@ class Routes {
   async removeFriend(session: WebSessionDoc, friend: string) {
     const user = WebSession.getUser(session);
     const friendId = (await User.getUserByUsername(friend))._id;
+    await Profile.removeFriend(user, friendId);
     return await Friend.removeFriend(user, friendId);
   }
 
@@ -138,6 +140,7 @@ class Routes {
   async acceptFriendRequest(session: WebSessionDoc, from: string) {
     const user = WebSession.getUser(session);
     const fromId = (await User.getUserByUsername(from))._id;
+    await Profile.addFriend(user, fromId);
     return await Friend.acceptRequest(fromId, user);
   }
 
@@ -148,18 +151,37 @@ class Routes {
     return await Friend.rejectRequest(fromId, user);
   }
 
+  // Profile Concept
+  @Router.post("/profiles")
+  async newProfile(session: WebSessionDoc, name: string, biography: string | null) {
+    const user = WebSession.getUser(session);
+    return await Profile.create(user, name, biography);
+  }
+
+  @Router.patch("/profiles/name")
+  async changeName(session: WebSessionDoc, newname: string) {
+    const user = WebSession.getUser(session);
+    return await Profile.editName(user, newname);
+  }
+
+  @Router.patch("/profiles/biography")
+  async changeBiography(session: WebSessionDoc, newbio: string) {
+    const user = WebSession.getUser(session);
+    return await Profile.editBiography(user, newbio);
+  }
+
   // Creating a new group
   @Router.post("/groups")
-  async newGroup(session: WebSessionDoc, groupname: string) {
+  async newGroup(session: WebSessionDoc, groupname: string, description: string | null) {
     const user = WebSession.getUser(session);
-    return await Group.newGroup(user, groupname);
+    return await Group.newGroup(user, groupname, description);
   }
 
   @Router.get("/groups/name/:name")
   async getGroup(name: string) {
     return await Group.getGroupfromName(name);
   }
-  
+
   @Router.post("/groups/name/:name")
   async joinGroup(session: WebSessionDoc, name: string) {
     const user = WebSession.getUser(session);
@@ -172,12 +194,12 @@ class Routes {
     // Remove all Comments from User in Group
     const group = await Group.getGroupfromName(name);
     const userComments = await Comment.getUserCommentsfromGroup(group._id, user);
-    for (let i = 0; i < userComments.length; i ++) {
-      await Comment.removeComment(userComments[i], user)
+    for (let i = 0; i < userComments.length; i++) {
+      await Comment.removeComment(userComments[i], user);
     }
     return await Group.removeSelf(user, name);
   }
-  
+
   @Router.patch("/groups/remove")
   async removeUser(session: WebSessionDoc, name: string, otheruser: string) {
     const user = WebSession.getUser(session);
@@ -185,7 +207,7 @@ class Routes {
     const group = await Group.getGroupfromName(name);
     // Remove all Comments from Other User in Group
     const userComments = await Comment.getUserCommentsfromGroup(group._id, other._id);
-    for (let i = 0; i < userComments.length; i ++) {
+    for (let i = 0; i < userComments.length; i++) {
       await Comment.removeComment(userComments[i], user);
     }
     return await Group.removeOtherUser(user, other._id, name);
@@ -197,7 +219,7 @@ class Routes {
     const group = await Group.getGroupfromName(name);
     // Remove all Comments from Group
     const allComments = await Comment.getComments(group._id);
-    for (let i = 0; i < allComments.length; i ++) {
+    for (let i = 0; i < allComments.length; i++) {
       await Comment.removeComment(allComments[i]._id, user);
     }
     return await Group.removeGroup(user, name);
@@ -216,8 +238,14 @@ class Routes {
     return await Group.changeName(user, name, newname);
   }
 
+  @Router.patch("/groups/description")
+  async updateDescription(session: WebSessionDoc, name: string, newdescription: string) {
+    const user = WebSession.getUser(session);
+    return await Group.updateDescription(user, name, newdescription);
+  }
+
   @Router.get("/groups")
-  async getAllGroups( ){
+  async getAllGroups() {
     return await Group.getAllGroups();
   }
 
@@ -227,13 +255,18 @@ class Routes {
     return await Group.getAllUserGroups(user);
   }
 
+  @Router.get("groups/size")
+  async getGroupSize(name: string) {
+    return await Group.getGroupSize(name);
+  }
+
   // Comment Concept
   @Router.post("/comments")
   async createComment(session: WebSessionDoc, body: string, group: string) {
     const user = WebSession.getUser(session);
     const group_obj = await Group.getGroupfromName(group);
-    const comment = (await Comment.create(user, body, group_obj._id));
-    // Add Comment to Group 
+    const comment = await Comment.create(user, body, group_obj._id);
+    // Add Comment to Group
     if (comment.comment) {
       await Group.addComment(group, comment.comment._id);
     }
@@ -246,7 +279,7 @@ class Routes {
     const allChildren = await Comment.getAllChildren(id);
     const group_obj = await Comment.getGroup(id);
     // Remove Comment from Group
-    for (let i = 0; i < allChildren.length; i ++) {
+    for (let i = 0; i < allChildren.length; i++) {
       await Group.deleteComment(group_obj, allChildren[i]);
     }
     return await Comment.removeComment(id, user);
@@ -286,7 +319,7 @@ class Routes {
   async getBooks() {
     return await Book.getAllBooks();
   }
-  
+
   @Router.patch("/book/add/:title/group/:chat")
   async addGroup(session: WebSessionDoc, title: string, chat: string) {
     const user = WebSession.getUser(session);
@@ -308,7 +341,7 @@ class Routes {
     if (group && isAdmin) {
       return await Book.removeGroup(title, group._id);
     }
-    throw new NotAllowedError ("Not Allowed to Remove Group!");
+    throw new NotAllowedError("Not Allowed to Remove Group!");
   }
 
   @Router.get("/book/title/:title")
@@ -320,7 +353,7 @@ class Routes {
   async getRecommendations() {
     return await Book.bookRecommend();
   }
-  
+
   // List Concept
   @Router.post("/list")
   async createList(session: WebSessionDoc, name: string) {
@@ -353,7 +386,6 @@ class Routes {
     const user = WebSession.getUser(session);
     return await List.getUserLists(user);
   }
-  
 }
 
 export default getExpressRouter(new Routes());
