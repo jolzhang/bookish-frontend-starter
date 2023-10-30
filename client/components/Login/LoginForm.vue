@@ -5,6 +5,7 @@ import { ref } from "vue";
 
 const username = ref("");
 const password = ref("");
+const email = ref("");
 const { loginUser, updateSession } = useUserStore();
 
 async function login() {
@@ -21,6 +22,10 @@ async function login() {
       <div class="pure-control-group">
         <label for="aligned-name">Username</label>
         <input v-model.trim="username" type="text" id="aligned-name" placeholder="Username" required />
+      </div>
+      <div class="pure-control-group">
+        <label for="aligned-name">Email</label>
+        <input v-model.trim="email" type="text" id="aligned-name" placeholder="Email" required />
       </div>
       <div class="pure-control-group">
         <label for="aligned-password">Password</label>

@@ -2,8 +2,9 @@
 import { useToastStore } from "@/stores/toast";
 import { useUserStore } from "@/stores/user";
 import { storeToRefs } from "pinia";
-import { computed, onBeforeMount } from "vue";
+import { computed, onBeforeMount, watchEffect } from "vue";
 import { RouterLink, RouterView, useRoute } from "vue-router";
+import router from "./router";
 
 const currentRoute = useRoute();
 const currentRouteName = computed(() => currentRoute.name);
@@ -19,6 +20,15 @@ onBeforeMount(async () => {
     // User is not logged in
   }
 });
+
+watchEffect(() => {
+  if (!isLoggedIn.value) {
+    router.push({ name: "Home" });
+  }
+});
+
+
+
 </script>
 
 <template>
